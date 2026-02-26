@@ -41,6 +41,20 @@ def init_db():
         """
     )
 
+    # soil moisture readings (per user, optional per crop)
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS soil_moisture_readings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            crop TEXT,
+            moisture_pct REAL NOT NULL,
+            source TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
     # populate default crops if empty
     cur.execute("SELECT COUNT(*) AS cnt FROM crops")
     if cur.fetchone()["cnt"] == 0:
@@ -111,3 +125,75 @@ def get_crop_info(name: str):
     if row:
         return dict(row)
     return {}
+
+
+def add_soil_moisture_reading(email: str, crop: str | None, moisture_pct: float, source: str) -> None:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO soil_moisture_readings (email, crop, moisture_pct, source) VALUES (?, ?, ?, ?)",
+        (email, crop, float(moisture_pct), str(source)),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_latest_soil_moisture_reading(email: str, crop: str | None = None):
+    conn = get_connection()
+    cur = conn.cursor()
+    if crop:
+        cur.execute(
+            """
+            SELECT moisture_pct, source, created_at, crop
+            FROM soil_moisture_readings
+            WHERE email = ? AND crop = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (email, crop),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT moisture_pct, source, created_at, crop
+            FROM soil_moisture_readings
+            WHERE email = ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (email,),
+        )
+    row = cur.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def get_recent_soil_moisture_readings(email: str, crop: str | None = None, limit: int = 50):
+    conn = get_connection()
+    cur = conn.cursor()
+    limit = int(limit)
+    if crop:
+        cur.execute(
+            """
+            SELECT moisture_pct, source, created_at, crop
+            FROM soil_moisture_readings
+            WHERE email = ? AND crop = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (email, crop, limit),
+        )
+    else:
+        cur.execute(
+            """
+            SELECT moisture_pct, source, created_at, crop
+            FROM soil_moisture_readings
+            WHERE email = ?
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (email, limit),
+        )
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return rows

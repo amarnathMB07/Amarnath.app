@@ -23,3 +23,11 @@ def test_crop_entries_present():
     assert "Wheat" in crops
     info = database.get_crop_info("Rice")
     assert info["water"] == "Very high"
+
+
+def test_soil_moisture_roundtrip():
+    database.create_user("bar@example.com", "secret")
+    database.add_soil_moisture_reading("bar@example.com", "Wheat", 42.5, "manual")
+    latest = database.get_latest_soil_moisture_reading("bar@example.com", crop="Wheat")
+    assert latest is not None
+    assert float(latest["moisture_pct"]) == 42.5

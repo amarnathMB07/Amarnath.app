@@ -1,9 +1,9 @@
 import streamlit as st
-import random
 from datetime import datetime, timedelta
 
 # database helpers initialize on import
 import database
+import weather
 
 database.init_db()
 
@@ -187,6 +187,13 @@ def show_dashboard():
     st.sidebar.title("AgroSmart 🌾")
     st.sidebar.write("Green insights for your farm")
 
+    st.sidebar.subheader("Location")
+    if "location_query" not in st.session_state:
+        st.session_state.location_query = "San Francisco, CA"
+    st.session_state.location_query = st.sidebar.text_input(
+        "City / Place", st.session_state.location_query
+    )
+
     if st.sidebar.button("Logout"):
         st.session_state.logged_in = False
         st.session_state.email = ''
@@ -327,26 +334,141 @@ def show_dashboard():
 
     # --- Weather Status ---
     st.subheader("Weather Status ☀️🌧️")
-    temp = random.randint(12, 36)
-    condition = random.choice(["Sunny", "Cloudy", "Rainy", "Partly Cloudy", "Stormy"])
-    rain_prob = random.randint(0, 100)
 
-    st.metric(label="Temperature", value=f"{temp} °C", delta=f"{random.randint(-2,3)}°")
-    st.write(f"**Condition:** {condition}  ")
-    st.write(f"**Chance of rain:** {rain_prob}%")
+    @st.cache_data(ttl=60 * 15)
+    def _resolve_location(q: str):
+        results = weather.geocode(q, count=5)
+        return [r.__dict__ for r in results]
+
+    @st.cache_data(ttl=60 * 10)
+    def _fetch_weather(lat: float, lon: float):
+        return weather.get_current_weather(lat, lon)
+
+    location_query = st.session_state.get("location_query") or ""
+
+    use_manual_coords = st.checkbox("Use manual latitude/longitude", value=False)
+    manual_lat = st.number_input("Latitude", value=37.7749, format="%.6f", disabled=not use_manual_coords)
+    manual_lon = st.number_input("Longitude", value=-122.4194, format="%.6f", disabled=not use_manual_coords)
+
+    if use_manual_coords:
+        try:
+            w = _fetch_weather(float(manual_lat), float(manual_lon))
+            temp_c = w.get("temperature_c")
+            st.metric(label="Temperature", value=f"{temp_c} °C" if temp_c is not None else "N/A")
+            st.write(f"**Condition:** {w.get('condition', 'Unknown')}  ")
+            if w.get("rain_probability_pct") is not None:
+                st.write(f"**Chance of rain (this hour):** {w['rain_probability_pct']}%")
+            if w.get("humidity_pct") is not None:
+                st.write(f"**Humidity:** {w['humidity_pct']}%")
+            if w.get("wind_kph") is not None:
+                st.write(f"**Wind:** {w['wind_kph']} km/h")
+            st.caption(f"As of: {w.get('asof')}")
+        except Exception as e:
+            st.warning(f"Weather fetch failed: {e}")
+    else:
+        try:
+            loc_results = _resolve_location(location_query) if location_query else []
+        except Exception as e:
+            loc_results = []
+            st.warning(f"Location lookup failed: {e}")
+
+        if not loc_results:
+            if location_query.strip():
+                st.warning(
+                    "No matching places found. Check spelling and your internet connection, or use manual coordinates."
+                )
+            else:
+                st.info("Enter a city/place name in the sidebar to load real weather.")
+        else:
+            labels = []
+            for r in loc_results:
+                parts = [r.get("name")]
+                if r.get("admin1"):
+                    parts.append(r["admin1"])
+                if r.get("country"):
+                    parts.append(r["country"])
+                labels.append(", ".join([p for p in parts if p]))
+
+            pick = st.selectbox(
+                "Weather location", list(range(len(labels))), format_func=lambda i: labels[i]
+            )
+            loc = loc_results[pick]
+            try:
+                w = _fetch_weather(float(loc["latitude"]), float(loc["longitude"]))
+                temp_c = w.get("temperature_c")
+                st.metric(label="Temperature", value=f"{temp_c} °C" if temp_c is not None else "N/A")
+                st.write(f"**Condition:** {w.get('condition', 'Unknown')}  ")
+                if w.get("rain_probability_pct") is not None:
+                    st.write(f"**Chance of rain (this hour):** {w['rain_probability_pct']}%")
+                if w.get("humidity_pct") is not None:
+                    st.write(f"**Humidity:** {w['humidity_pct']}%")
+                if w.get("wind_kph") is not None:
+                    st.write(f"**Wind:** {w['wind_kph']} km/h")
+                st.caption(f"As of: {w.get('asof')}")
+            except Exception as e:
+                st.warning(f"Weather fetch failed: {e}")
 
     # --- Soil Moisture ---
     st.subheader("Soil Moisture 🌱")
-    default_moist = random.randint(25, 65)
-    moisture = st.slider("Soil moisture (%)", 0, 100, default_moist)
-    st.progress(moisture)
+    source = st.selectbox(
+        "Moisture source",
+        ["Database (last saved)", "Sensor URL (HTTP JSON)", "Manual (save to DB)"],
+    )
 
-    if moisture < 30:
-        st.warning("Soil is dry — consider irrigation or mulching.")
-    elif moisture > 80:
-        st.info("Soil moisture is high — check drainage.")
-    else:
-        st.success("Soil moisture is in a healthy range.")
+    moisture_val: float | None = None
+    moisture_source: str | None = None
+    moisture_ts: str | None = None
+
+    if source.startswith("Database"):
+        latest = database.get_latest_soil_moisture_reading(st.session_state.email, crop=crop)
+        if latest:
+            moisture_val = float(latest["moisture_pct"])
+            moisture_source = str(latest["source"])
+            moisture_ts = str(latest["created_at"])
+        else:
+            st.info("No saved soil moisture readings yet. Use Manual or Sensor URL to add one.")
+
+    elif source.startswith("Sensor"):
+        default_url = os.environ.get("SOIL_MOISTURE_URL", "http://localhost:5000/moisture")
+        sensor_url = st.text_input("Sensor endpoint URL", default_url)
+        if st.button("Fetch sensor reading"):
+            try:
+                moisture_val = float(weather.fetch_sensor_moisture(sensor_url))
+                moisture_source = f"sensor:{sensor_url}"
+                database.add_soil_moisture_reading(
+                    st.session_state.email, crop, moisture_val, moisture_source
+                )
+                moisture_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                st.success("Saved sensor reading to database.")
+            except Exception as e:
+                st.error(f"Sensor fetch failed: {e}")
+
+    else:  # Manual
+        latest = database.get_latest_soil_moisture_reading(st.session_state.email, crop=crop)
+        default_moist = int(round(float(latest["moisture_pct"]))) if latest else 45
+        moisture_val = float(st.slider("Soil moisture (%)", 0, 100, int(default_moist)))
+        moisture_source = "manual"
+        if st.button("Save reading"):
+            database.add_soil_moisture_reading(
+                st.session_state.email, crop, moisture_val, moisture_source
+            )
+            moisture_ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            st.success("Saved reading.")
+
+    if moisture_val is not None:
+        st.progress(int(round(moisture_val)))
+        st.write(f"**Moisture:** {moisture_val:.1f}%")
+        if moisture_source:
+            st.caption(f"Source: {moisture_source}")
+        if moisture_ts:
+            st.caption(f"Saved/As of: {moisture_ts}")
+
+        if moisture_val < 30:
+            st.warning("Soil is dry — consider irrigation or mulching.")
+        elif moisture_val > 80:
+            st.info("Soil moisture is high — check drainage.")
+        else:
+            st.success("Soil moisture is in a healthy range.")
 
     # --- Quick Tips ---
     st.subheader("Quick Farming Tips 🚜")
