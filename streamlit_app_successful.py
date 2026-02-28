@@ -346,17 +346,15 @@ def show_dashboard():
 
     location_query = st.session_state.get("location_query") or ""
 
-    col_refresh, _ = st.columns([1, 3])
-    with col_refresh:
-        if st.button("Refresh weather"):
-            try:
-                _fetch_weather.clear()
-            except Exception:
-                pass
-            try:
-                _resolve_location.clear()
-            except Exception:
-                pass
+    if st.button("Refresh weather"):
+        try:
+            _fetch_weather.clear()
+        except Exception:
+            pass
+        try:
+            _resolve_location.clear()
+        except Exception:
+            pass
 
     use_manual_coords = st.checkbox("Use manual latitude/longitude", value=False)
     manual_lat = st.number_input("Latitude", value=37.7749, format="%.6f", disabled=not use_manual_coords)
