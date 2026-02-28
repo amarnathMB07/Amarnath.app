@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import urllib.parse
 import urllib.request
+import urllib.error
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -50,6 +52,12 @@ _WEATHER_CODE = {
 
 
 def _http_get_json(url: str, timeout_s: float = 10.0) -> dict[str, Any]:
+    """HTTP GET JSON with a small amount of retry logic.
+
+    Open-Meteo may return HTTP 429 (Too Many Requests) if the app is re-run
+    frequently (Streamlit reruns on widget changes) or multiple users share the
+    same outbound IP. When that happens we back off briefly and retry.
+    """
     req = urllib.request.Request(
         url,
         headers={
@@ -58,9 +66,32 @@ def _http_get_json(url: str, timeout_s: float = 10.0) -> dict[str, Any]:
         },
         method="GET",
     )
-    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-        data = resp.read()
-    return json.loads(data.decode("utf-8"))
+
+    last_err: Exception | None = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                data = resp.read()
+            return json.loads(data.decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            last_err = e
+            # 429 is a transient rate limit; respect Retry-After if present.
+            if getattr(e, "code", None) == 429 and attempt < 2:
+                retry_after = e.headers.get("Retry-After") if getattr(e, "headers", None) else None
+                try:
+                    sleep_s = float(retry_after) if retry_after else 1.5 * (attempt + 1)
+                except Exception:
+                    sleep_s = 1.5 * (attempt + 1)
+                time.sleep(max(0.5, min(10.0, sleep_s)))
+                continue
+            raise
+        except Exception as e:
+            last_err = e
+            raise
+
+    if last_err:
+        raise last_err
+    raise RuntimeError("HTTP request failed")
 
 
 def _geocode_open_meteo(name: str, *, count: int = 5) -> list[GeoResult]:

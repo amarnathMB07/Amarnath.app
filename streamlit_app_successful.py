@@ -340,11 +340,23 @@ def show_dashboard():
         results = weather.geocode(q, count=5)
         return [r.__dict__ for r in results]
 
-    @st.cache_data(ttl=60 * 10)
+    @st.cache_data(ttl=60 * 30)
     def _fetch_weather(lat: float, lon: float):
         return weather.get_current_weather(lat, lon)
 
     location_query = st.session_state.get("location_query") or ""
+
+    col_refresh, _ = st.columns([1, 3])
+    with col_refresh:
+        if st.button("Refresh weather"):
+            try:
+                _fetch_weather.clear()
+            except Exception:
+                pass
+            try:
+                _resolve_location.clear()
+            except Exception:
+                pass
 
     use_manual_coords = st.checkbox("Use manual latitude/longitude", value=False)
     manual_lat = st.number_input("Latitude", value=37.7749, format="%.6f", disabled=not use_manual_coords)
@@ -406,7 +418,14 @@ def show_dashboard():
                     st.write(f"**Wind:** {w['wind_kph']} km/h")
                 st.caption(f"As of: {w.get('asof')}")
             except Exception as e:
-                st.warning(f"Weather fetch failed: {e}")
+                msg = str(e)
+                if "HTTP Error 429" in msg or "429" in msg:
+                    st.warning(
+                        "Weather fetch failed due to rate limiting (HTTP 429). "
+                        "Wait a minute and click 'Refresh weather' to try again."
+                    )
+                else:
+                    st.warning(f"Weather fetch failed: {e}")
 
     # --- Soil Moisture ---
     st.subheader("Soil Moisture 🌱")
