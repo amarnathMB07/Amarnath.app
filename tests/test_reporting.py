@@ -39,8 +39,8 @@ def test_build_final_review_html_includes_core_fields():
     assert "Final Crop Review" in html
     assert "Rice" in html
     assert "Chennai" in html
-    assert "Saved soil moisture" in html
-    assert "Likely hazards" in html
+    assert "3) Soil moisture" in html
+    assert "Likely hazards to watch" in html
 
 
 def test_build_final_review_html_escapes_email():
@@ -58,4 +58,3 @@ def test_build_final_review_html_escapes_email():
         weather=None,
     )
     assert "<script>" not in html
-

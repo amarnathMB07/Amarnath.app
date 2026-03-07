@@ -634,8 +634,7 @@ def show_dashboard():
 
     if st.session_state.get("final_review_just_generated"):
         if hasattr(st, "toast"):
-            st.toast("Final review ready.")
-        st.balloons()
+            st.toast("🌱 Final review ready.")
         st.session_state.final_review_just_generated = False
 
     if st.session_state.final_review_html:

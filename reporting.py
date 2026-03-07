@@ -297,11 +297,27 @@ def build_final_review_html(
     questions_preview = [q.strip() for q in assistant_questions if q.strip()][-6:]
     questions_preview.reverse()
 
+    rendered_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     html_out = f"""
     <style>
       @keyframes finalReveal {{
         from {{ opacity: 0; transform: translateY(10px); }}
         to   {{ opacity: 1; transform: translateY(0px); }}
+      }}
+      @keyframes sproutStem {{
+        0% {{ transform: scaleY(0.10); opacity: 0.4; }}
+        60% {{ transform: scaleY(1.00); opacity: 1; }}
+        100% {{ transform: scaleY(1.00); opacity: 1; }}
+      }}
+      @keyframes sproutLeaf {{
+        0% {{ transform: scale(0.20) rotate(-10deg); opacity: 0; }}
+        70% {{ transform: scale(1.00) rotate(0deg); opacity: 1; }}
+        100% {{ transform: scale(1.00) rotate(0deg); opacity: 1; }}
+      }}
+      @keyframes sunPulse {{
+        0%, 100% {{ transform: scale(1.00); filter: drop-shadow(0 0 0 rgba(255,193,7,0.0)); }}
+        50% {{ transform: scale(1.05); filter: drop-shadow(0 0 10px rgba(255,193,7,0.45)); }}
       }}
       .final-report {{ font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; color: #05391f; }}
       .final-report.reveal {{ animation: finalReveal 650ms ease-out; }}
@@ -322,22 +338,63 @@ def build_final_review_html(
       .tbl th, .tbl td {{ border-bottom: 1px solid rgba(3,77,35,0.10); padding: 6px 4px; vertical-align: top; }}
       ul {{ margin: 6px 0 0 18px; }}
       .callout {{ border-left: 4px solid rgba(46,125,50,0.55); padding-left: 10px; margin-top: 8px; }}
+      .section-title {{ font-size: 1.02rem; font-weight: 900; margin: 10px 0 6px; }}
+      .pillbar {{ display:flex; flex-wrap:wrap; gap:8px; margin-top: 8px; }}
+      .pill {{ background: rgba(46,125,50,0.10); border: 1px solid rgba(3,77,35,0.15); border-radius: 999px; padding: 6px 10px; font-weight: 700; font-size: 0.90rem; }}
+      .toc a {{ color: #0b5a2f; text-decoration: none; font-weight: 800; }}
+      .toc a:hover {{ text-decoration: underline; }}
+      details {{ border: 1px dashed rgba(3,77,35,0.18); border-radius: 10px; padding: 10px; background: rgba(255,255,255,0.70); }}
+      summary {{ cursor: pointer; font-weight: 900; }}
+      .hero {{ display:flex; align-items:center; justify-content:space-between; gap: 10px; }}
+      .sprout {{ width: 78px; height: 78px; flex: 0 0 auto; position: relative; }}
+      .sprout .soil {{ position:absolute; bottom:6px; left:6px; right:6px; height: 16px; background: linear-gradient(180deg, rgba(121,85,72,0.85), rgba(93,64,55,0.92)); border-radius: 10px; border: 1px solid rgba(3,77,35,0.15); }}
+      .sprout .stem {{ position:absolute; bottom:20px; left: 50%; width: 6px; height: 42px; transform-origin: bottom; transform: translateX(-50%) scaleY(1); background: linear-gradient(180deg, rgba(76,175,80,0.95), rgba(46,125,50,0.98)); border-radius: 6px; animation: sproutStem 900ms ease-out; }}
+      .sprout .leaf {{ position:absolute; width: 26px; height: 16px; background: linear-gradient(180deg, rgba(129,199,132,0.95), rgba(67,160,71,0.98)); border-radius: 18px 18px 18px 0; border: 1px solid rgba(3,77,35,0.10); animation: sproutLeaf 1100ms ease-out; }}
+      .sprout .leaf.left {{ bottom: 42px; left: 22px; transform-origin: right bottom; transform: rotate(-20deg); }}
+      .sprout .leaf.right {{ bottom: 46px; right: 18px; transform-origin: left bottom; transform: scaleX(-1) rotate(-20deg); }}
+      .sprout .sun {{ position:absolute; top: 2px; right: 2px; width: 18px; height: 18px; background: radial-gradient(circle at 30% 30%, rgba(255,235,59,0.95), rgba(255,193,7,0.95)); border-radius: 999px; animation: sunPulse 1400ms ease-in-out; }}
       @media (max-width: 900px) {{ .grid2 {{ grid-template-columns: 1fr; }} .badge {{ white-space: normal; }} }}
     </style>
 
-    <div class="final-report reveal">
-      <div class="final-header">
+    <div class="final-report reveal" data-rendered-at="{_esc(rendered_at)}">
+      <div class="hero">
         <div>
           <div class="final-title">Final Crop Review</div>
           <div class="muted">User: {_esc(email)} · Crop: <b>{_esc(crop_name)}</b></div>
           {loc_line}
+          <div class="pillbar">
+            <div class="pill">Moisture: {_esc(_fmt_pct(latest_moisture))}</div>
+            <div class="pill">Stage: {_esc(stage_line)}</div>
+            <div class="pill">Harvest: {_esc(harvest_line)}</div>
+            <div class="pill">Rendered: {_esc(rendered_at)}</div>
+          </div>
         </div>
-        <div class="badge badge-{_esc(moisture_class)}">Soil moisture: {_esc(_fmt_pct(latest_moisture))}</div>
+        <div class="sprout" aria-hidden="true">
+          <div class="sun"></div>
+          <div class="leaf left"></div>
+          <div class="leaf right"></div>
+          <div class="stem"></div>
+          <div class="soil"></div>
+        </div>
+      </div>
+
+      <div class="sp"></div>
+      <div class="card toc">
+        <div class="card-title">Quick navigation</div>
+        <div class="muted">
+          <a href="#sec1">1) Crop profile</a> ·
+          <a href="#sec2">2) Timeline</a> ·
+          <a href="#sec3">3) Soil moisture</a> ·
+          <a href="#sec4">4) Weather + risks</a> ·
+          <a href="#sec5">5) Hazards + prevention</a> ·
+          <a href="#sec6">6) Future threats</a> ·
+          <a href="#sec7">7) Your questions</a>
+        </div>
       </div>
 
       <div class="grid2">
-        <div class="card">
-          <div class="card-title">Crop profile</div>
+        <div class="card" id="sec1">
+          <div class="card-title">1) Crop profile</div>
           <div><span class="k">Optimal temperature</span><br><span class="v">{_esc(temp or 'N/A')} °C</span></div>
           <div class="sp"></div>
           <div><span class="k">Water requirement</span><br><span class="v">{_esc(water_req or 'N/A')}</span></div>
@@ -349,8 +406,8 @@ def build_final_review_html(
           <div><span class="k">Typical harvest time</span><br><span class="v">{_esc(harvest_text or 'N/A')}</span></div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Your timeline</div>
+        <div class="card" id="sec2">
+          <div class="card-title">2) Timeline</div>
           <div><span class="k">Planting date</span><br><span class="v">{_esc(planting_line)}</span></div>
           <div class="sp"></div>
           <div><span class="k">Expected harvest date</span><br><span class="v">{_esc(harvest_line)}</span></div>
@@ -366,8 +423,11 @@ def build_final_review_html(
       {weather_block}
 
       <div class="grid2">
-        <div class="card">
-          <div class="card-title">Saved soil moisture (recent)</div>
+        <div class="card" id="sec3">
+          <div class="card-title">3) Soil moisture</div>
+          <div class="muted">Status: <b>{_esc(_fmt_pct(latest_moisture))}</b> ({_esc(moisture_note)})</div>
+          <div class="sp"></div>
+          <div class="card-title">Recent saved readings</div>
           <table class="tbl">
             <thead><tr><th>Time</th><th style="text-align:right">Moisture</th><th>Source</th></tr></thead>
             <tbody>{moisture_rows}</tbody>
@@ -375,27 +435,43 @@ def build_final_review_html(
           <div class="muted">Tip: Calibrate your sensor (wet_raw/dry_raw) for more accurate % values.</div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Your questions</div>
-          <div class="muted">Recent topics: {_esc(", ".join(q_topics) if q_topics else "N/A")}</div>
-          <ul>{li(questions_preview or [])}</ul>
+        <div class="card" id="sec4">
+          <div class="card-title">4) Weather + immediate risks</div>
+          <details open>
+            <summary>What to watch today</summary>
+            <ul>{li(weather_notes)}</ul>
+          </details>
+          <div class="muted">If weather is not loaded, use the Weather section first and then regenerate the review.</div>
         </div>
       </div>
 
       <div class="grid2">
-        <div class="card">
-          <div class="card-title">Likely hazards to watch</div>
-          <ul>{li(hazards)}</ul>
-          <div class="callout"><b>Prevention checklist</b><ul>{li(prevention)}</ul></div>
-        </div>
-        <div class="card">
-          <div class="card-title">Weather + field risk notes</div>
-          <ul>{li(weather_notes)}</ul>
+        <div class="card" id="sec5">
+          <div class="card-title">5) Hazards + prevention</div>
+          <details open>
+            <summary>Likely hazards to watch</summary>
+            <ul>{li(hazards)}</ul>
+          </details>
           <div class="sp"></div>
-          <div class="card-title">Future threats (and avoidable solutions)</div>
-          <ul>{li_pairs(future_threats)}</ul>
+          <details open>
+            <summary>Prevention checklist</summary>
+            <ul>{li(prevention)}</ul>
+          </details>
+        </div>
+        <div class="card" id="sec6">
+          <div class="card-title">6) Future threats (and avoidable solutions)</div>
+          <details open>
+            <summary>Longer-term threats and what to do</summary>
+            <ul>{li_pairs(future_threats)}</ul>
+          </details>
           <div class="muted">Always confirm with local agricultural advisories for your district.</div>
         </div>
+      </div>
+
+      <div class="card" id="sec7">
+        <div class="card-title">7) Your questions</div>
+        <div class="muted">Recent topics: {_esc(", ".join(q_topics) if q_topics else "N/A")}</div>
+        <ul>{li(questions_preview or [])}</ul>
       </div>
 
       <div class="muted">
