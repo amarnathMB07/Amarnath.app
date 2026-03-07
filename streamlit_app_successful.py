@@ -66,6 +66,7 @@ def parse_days(text):
 
 
 import os
+import assistant_kb
 
 try:
     import openai
@@ -117,6 +118,10 @@ def generate_assistant_response(question: str, crop: str, info: dict) -> str:
             "Ask me about soil, water needs, fertilizers, seasons, or harvest times. "
             "You can also just say hello!"
         )
+
+    kb_answer = assistant_kb.answer_question(question, crop, info)
+    if kb_answer:
+        return kb_answer
     if "soil" in q:
         if crop.lower() == "rice":
             return (
