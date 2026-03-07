@@ -94,6 +94,69 @@ def _crop_hazards(crop: str) -> list[str]:
     ]
 
 
+def _crop_prevention(crop: str) -> list[str]:
+    c = (crop or "").strip().lower()
+    if c == "rice":
+        return [
+            "Use resistant varieties where available; follow district advisory for seed selection.",
+            "Keep field drainage channels clear; avoid stagnant water for long periods if disease pressure is high.",
+            "Monitor pests weekly (especially stem borer/planthoppers); use traps and targeted control if thresholds are crossed.",
+            "Use balanced fertilizer (avoid excess nitrogen which increases pest/disease risk).",
+        ]
+    if c == "wheat":
+        return [
+            "Choose rust-resistant varieties; inspect leaves for rust spots in cool/humid periods.",
+            "Avoid excess nitrogen; split doses and ensure good potassium for stronger stems.",
+            "Irrigate at critical stages (crown root initiation, tillering, heading) without waterlogging.",
+            "Keep weeds controlled early to avoid nutrient and moisture competition.",
+        ]
+    if c == "tomato":
+        return [
+            "Stake plants and keep good spacing for airflow; avoid wetting leaves late in the day.",
+            "Mulch to keep moisture stable; irregular watering increases blossom end rot and cracking.",
+            "Use yellow sticky traps and monitor whiteflies; remove heavily infected plants early if viral symptoms appear.",
+            "Follow a preventive spray schedule only if needed and as per local guidance; rotate modes of action.",
+        ]
+    if c in ("corn", "maize"):
+        return [
+            "Scout for fall armyworm early; use pheromone traps and destroy egg masses if found.",
+            "Ensure adequate moisture during tasseling/silking; drought here reduces yield the most.",
+            "Avoid lodging with balanced nutrition and proper plant spacing.",
+        ]
+    return [
+        "Use certified seed suited to your season and soil.",
+        "Do soil testing and apply balanced nutrients (NPK + micronutrients if needed).",
+        "Keep soil moisture in the crop’s safe range; ensure drainage after heavy rain.",
+        "Scout weekly for pests/disease and act early using IPM methods.",
+    ]
+
+
+def _future_threats_and_solutions(crop: str) -> list[tuple[str, str]]:
+    c = (crop or "").strip().lower()
+    common = [
+        ("Heat waves", "Use mulching, timely irrigation, shade nets (for vegetables), and heat-tolerant varieties."),
+        ("Irregular rainfall", "Improve drainage, harvest rainwater, and use soil moisture–based irrigation scheduling."),
+        ("New pest pressure", "Regular scouting + traps, rotate pesticides responsibly, and use resistant varieties when available."),
+        ("Soil fertility decline", "Add compost/FYM, use cover crops/green manure, and rotate crops to rebuild organic matter."),
+    ]
+    if c == "rice":
+        return [
+            ("Blast/sheath blight outbreaks", "Use resistant varieties, avoid excess nitrogen, and manage water + spacing to reduce humidity in canopy."),
+            ("Planthopper surges", "Avoid overuse of nitrogen, preserve beneficial insects, and use threshold-based sprays."),
+        ] + common
+    if c == "wheat":
+        return [
+            ("Rust epidemics", "Plant rust-resistant varieties and follow timely fungicide only when advised; avoid late sowing in risky zones."),
+            ("Terminal heat stress", "Prefer timely sowing and heat-tolerant varieties; ensure irrigation during grain filling."),
+        ] + common
+    if c == "tomato":
+        return [
+            ("Late blight during humid spells", "Improve airflow, avoid leaf wetness, and use preventive protection only when conditions are favorable for blight."),
+            ("Viral diseases via whiteflies", "Use nets/traps, remove infected plants early, and control vector population."),
+        ] + common
+    return common
+
+
 def _weather_risk_notes(w: WeatherSnapshot | None) -> list[str]:
     if not w:
         return []
@@ -152,6 +215,8 @@ def build_final_review_html(
 
     q_topics = _question_topics(assistant_questions)
     hazards = _crop_hazards(crop_name)
+    prevention = _crop_prevention(crop_name)
+    future_threats = _future_threats_and_solutions(crop_name)
     weather_notes = _weather_risk_notes(weather)
 
     today = datetime.now().date()
@@ -176,6 +241,14 @@ def build_final_review_html(
         if not items:
             return "<li>None</li>"
         return "".join(f"<li>{_esc(x)}</li>" for x in items)
+
+    def li_pairs(items: Sequence[tuple[str, str]]) -> str:
+        if not items:
+            return "<li>None</li>"
+        out = ""
+        for title, body in items:
+            out += f"<li><b>{_esc(title)}:</b> {_esc(body)}</li>"
+        return out
 
     moisture_rows = ""
     for r in list(moisture_recent)[:8]:
@@ -225,6 +298,33 @@ def build_final_review_html(
     questions_preview.reverse()
 
     html_out = f"""
+    <style>
+      @keyframes finalReveal {{
+        from {{ opacity: 0; transform: translateY(10px); }}
+        to   {{ opacity: 1; transform: translateY(0px); }}
+      }}
+      .final-report {{ font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; color: #05391f; }}
+      .final-report.reveal {{ animation: finalReveal 650ms ease-out; }}
+      .final-header {{ display:flex; gap:12px; align-items:flex-start; justify-content:space-between; margin-bottom:10px; }}
+      .final-title {{ font-size: 1.15rem; font-weight: 800; }}
+      .muted {{ color: rgba(3,77,35,0.72); font-size: 0.92rem; }}
+      .grid2 {{ display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }}
+      .card {{ background: rgba(255,255,255,0.92); border: 1px solid rgba(3,77,35,0.15); border-radius: 12px; padding: 12px; }}
+      .card-title {{ font-weight: 800; margin-bottom: 8px; }}
+      .k {{ font-size: 0.86rem; color: rgba(3,77,35,0.72); }}
+      .v {{ font-size: 0.98rem; }}
+      .sp {{ height: 8px; }}
+      .badge {{ border-radius: 999px; padding: 6px 10px; font-weight: 800; border: 1px solid rgba(3,77,35,0.15); background: rgba(255,255,255,0.75); white-space: nowrap; }}
+      .badge-good {{ background: rgba(46,125,50,0.12); }}
+      .badge-warn {{ background: rgba(255,193,7,0.18); }}
+      .badge-bad  {{ background: rgba(244,67,54,0.14); }}
+      .tbl {{ width: 100%; border-collapse: collapse; font-size: 0.92rem; }}
+      .tbl th, .tbl td {{ border-bottom: 1px solid rgba(3,77,35,0.10); padding: 6px 4px; vertical-align: top; }}
+      ul {{ margin: 6px 0 0 18px; }}
+      .callout {{ border-left: 4px solid rgba(46,125,50,0.55); padding-left: 10px; margin-top: 8px; }}
+      @media (max-width: 900px) {{ .grid2 {{ grid-template-columns: 1fr; }} .badge {{ white-space: normal; }} }}
+    </style>
+
     <div class="final-report reveal">
       <div class="final-header">
         <div>
@@ -286,10 +386,14 @@ def build_final_review_html(
         <div class="card">
           <div class="card-title">Likely hazards to watch</div>
           <ul>{li(hazards)}</ul>
+          <div class="callout"><b>Prevention checklist</b><ul>{li(prevention)}</ul></div>
         </div>
         <div class="card">
           <div class="card-title">Weather + field risk notes</div>
           <ul>{li(weather_notes)}</ul>
+          <div class="sp"></div>
+          <div class="card-title">Future threats (and avoidable solutions)</div>
+          <ul>{li_pairs(future_threats)}</ul>
           <div class="muted">Always confirm with local agricultural advisories for your district.</div>
         </div>
       </div>
@@ -300,4 +404,3 @@ def build_final_review_html(
     </div>
     """
     return html_out
-

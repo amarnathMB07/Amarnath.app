@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 from datetime import datetime, timedelta
 
 # database helpers initialize on import
@@ -270,6 +271,10 @@ def show_dashboard():
     season_db = {crop: database.get_crop_info(crop).get('season') for crop in crops}
     fertilizer_db = {crop: database.get_crop_info(crop).get('fertilizer') for crop in crops}
 
+    if "asked_questions" not in st.session_state:
+        st.session_state.asked_questions = []
+    if "last_predefined_question" not in st.session_state:
+        st.session_state.last_predefined_question = None
 
     answer = ""
     if q == "Is my soil good for rice?":
@@ -313,6 +318,9 @@ def show_dashboard():
         answer = f"Approximately {days} days." if days else "N/A"
 
     if answer:
+        if st.session_state.last_predefined_question != q:
+            st.session_state.asked_questions.append(q)
+            st.session_state.last_predefined_question = q
         st.info(answer)
 
     # --- Simple assistant / chat interface ---
@@ -359,8 +367,7 @@ def show_dashboard():
         f"Planting ({planting_dt.strftime('%Y-%m-%d')}) → "
         f"Harvest (~{harvest_date.strftime('%Y-%m-%d')})"
     )
-    # display as code block to preserve formatting
-    st.code(chart)
+    st.info(chart)
 
     # --- Weather Status ---
     st.subheader("Weather Status ☀️🌧️")
@@ -587,6 +594,15 @@ def show_dashboard():
                 if role == "user":
                     assistant_questions.append(str(msg))
 
+            all_questions = []
+            seen = set()
+            for qtxt in list(st.session_state.get("asked_questions", [])) + assistant_questions:
+                qtxt = str(qtxt).strip()
+                if not qtxt or qtxt in seen:
+                    continue
+                all_questions.append(qtxt)
+                seen.add(qtxt)
+
             latest_moisture = st.session_state.get("last_moisture_val")
             if latest_moisture is None:
                 latest_row = database.get_latest_soil_moisture_reading(
@@ -611,12 +627,19 @@ def show_dashboard():
                 harvest_days=int(harvest_days) if harvest_days else None,
                 moisture_recent=moisture_recent,
                 latest_moisture=float(latest_moisture) if latest_moisture is not None else None,
-                assistant_questions=assistant_questions,
+                assistant_questions=all_questions,
                 weather=weather_snap,
             )
+            st.session_state.final_review_just_generated = True
+
+    if st.session_state.get("final_review_just_generated"):
+        if hasattr(st, "toast"):
+            st.toast("Final review ready.")
+        st.balloons()
+        st.session_state.final_review_just_generated = False
 
     if st.session_state.final_review_html:
-        st.markdown(st.session_state.final_review_html, unsafe_allow_html=True)
+        components.html(st.session_state.final_review_html, height=980, scrolling=True)
 
 # --- App flow ---
 if not st.session_state.logged_in:
