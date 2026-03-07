@@ -157,6 +157,38 @@ def _future_threats_and_solutions(crop: str) -> list[tuple[str, str]]:
     return common
 
 
+def _crop_benefits(crop: str) -> list[str]:
+    c = (crop or "").strip().lower()
+    if c == "rice":
+        return [
+            "Staple food crop with strong demand in many regions.",
+            "Straw can be used for fodder, mulching, bedding, and composting.",
+            "Works well in low-lying fields where water can be managed.",
+        ]
+    if c == "wheat":
+        return [
+            "Staple grain with good storage life and stable market demand.",
+            "Straw is valuable for fodder and mulching.",
+            "Fits well in rotations (example: wheat → pulses/oilseeds).",
+        ]
+    if c == "tomato":
+        return [
+            "High-value vegetable crop with multiple harvests and faster returns.",
+            "Good source of vitamins and antioxidants (lycopene).",
+            "Can be grown in open field or protected cultivation for better price windows.",
+        ]
+    if c in ("corn", "maize"):
+        return [
+            "Versatile crop used for food, feed, and industrial purposes.",
+            "Can give high yields with good nutrient and water management.",
+            "Residues can be used for fodder or incorporated to add organic matter.",
+        ]
+    return [
+        "Provides food/income opportunities (depends on local market).",
+        "Supports resilience when used in rotation and diversification plans.",
+    ]
+
+
 def _weather_risk_notes(w: WeatherSnapshot | None) -> list[str]:
     if not w:
         return []
@@ -217,6 +249,7 @@ def build_final_review_html(
     hazards = _crop_hazards(crop_name)
     prevention = _crop_prevention(crop_name)
     future_threats = _future_threats_and_solutions(crop_name)
+    benefits = _crop_benefits(crop_name)
     weather_notes = _weather_risk_notes(weather)
 
     today = datetime.now().date()
@@ -388,7 +421,8 @@ def build_final_review_html(
           <a href="#sec4">4) Weather + risks</a> ·
           <a href="#sec5">5) Hazards + prevention</a> ·
           <a href="#sec6">6) Future threats</a> ·
-          <a href="#sec7">7) Your questions</a>
+          <a href="#sec7">7) Your questions</a> ·
+          <a href="#sec8">8) Benefits</a>
         </div>
       </div>
 
@@ -472,6 +506,11 @@ def build_final_review_html(
         <div class="card-title">7) Your questions</div>
         <div class="muted">Recent topics: {_esc(", ".join(q_topics) if q_topics else "N/A")}</div>
         <ul>{li(questions_preview or [])}</ul>
+      </div>
+
+      <div class="card" id="sec8">
+        <div class="card-title">8) Benefits of the selected crop</div>
+        <ul>{li(benefits)}</ul>
       </div>
 
       <div class="muted">
