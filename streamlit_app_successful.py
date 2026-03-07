@@ -1,6 +1,7 @@
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime, timedelta
+import time
 
 # database helpers initialize on import
 import database
@@ -43,6 +44,22 @@ st.markdown(
     .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
     .tbl th, .tbl td { border-bottom: 1px solid rgba(3,77,35,0.10); padding: 6px 4px; vertical-align: top; }
     @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+
+    /* Agriculture-themed loader (shown while generating final review) */
+    @keyframes seedPop { 0% { transform: translateY(0) scale(1); } 35% { transform: translateY(-6px) scale(1.05);} 100% { transform: translateY(0) scale(1);} }
+    @keyframes stemGrow { 0% { transform: translateX(-50%) scaleY(0.05); opacity: 0.35;} 70% { transform: translateX(-50%) scaleY(1); opacity: 1;} 100% { transform: translateX(-50%) scaleY(1); opacity: 1;} }
+    @keyframes leafWiggle { 0%,100% { transform: rotate(-12deg) scale(0.95);} 50% { transform: rotate(8deg) scale(1);} }
+    .agri-loader { background: rgba(255,255,255,0.72); border: 1px solid rgba(3,77,35,0.15); border-radius: 14px; padding: 12px; }
+    .agri-row { display:flex; align-items:center; justify-content:space-between; gap: 12px; }
+    .agri-plant { position: relative; width: 86px; height: 62px; flex: 0 0 auto; }
+    .agri-soil { position:absolute; bottom:0; left:0; right:0; height: 16px; border-radius: 999px; background: linear-gradient(180deg, rgba(121,85,72,0.85), rgba(93,64,55,0.92)); border: 1px solid rgba(3,77,35,0.12); }
+    .agri-seed { position:absolute; bottom: 8px; left: 14px; width: 18px; height: 12px; border-radius: 999px; background: linear-gradient(180deg, rgba(210,180,140,0.95), rgba(160,120,80,0.95)); animation: seedPop 900ms ease-in-out infinite; }
+    .agri-stem { position:absolute; bottom: 14px; left: 50%; width: 6px; height: 40px; transform-origin: bottom; background: linear-gradient(180deg, rgba(129,199,132,0.98), rgba(46,125,50,0.98)); border-radius: 6px; animation: stemGrow 900ms ease-out infinite; }
+    .agri-leaf { position:absolute; width: 22px; height: 14px; background: linear-gradient(180deg, rgba(165,214,167,0.98), rgba(67,160,71,0.98)); border-radius: 18px 18px 18px 0; border: 1px solid rgba(3,77,35,0.10); animation: leafWiggle 700ms ease-in-out infinite; }
+    .agri-leaf.left { bottom: 36px; left: 30px; transform-origin: right bottom; }
+    .agri-leaf.right { bottom: 40px; right: 26px; transform: scaleX(-1); transform-origin: left bottom; }
+    .agri-text .title { font-weight: 800; }
+    .agri-text .hint { color: rgba(3,77,35,0.72); font-size: 0.92rem; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -548,7 +565,38 @@ def show_dashboard():
         st.session_state.final_review_html = None
 
     if st.button("Generate detailed review", type="primary"):
+        loader_box = st.empty()
+        progress = st.progress(0)
+        status = st.empty()
+
+        loader_box.markdown(
+            """
+            <div class="agri-loader">
+              <div class="agri-row">
+                <div class="agri-text">
+                  <div class="title">Preparing your crop review…</div>
+                  <div class="hint">Collecting saved data, analyzing risks, and building an action plan.</div>
+                </div>
+                <div class="agri-plant" aria-hidden="true">
+                  <div class="agri-leaf left"></div>
+                  <div class="agri-leaf right"></div>
+                  <div class="agri-stem"></div>
+                  <div class="agri-seed"></div>
+                  <div class="agri-soil"></div>
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        def _step(pct: int, msg: str, pause_s: float = 0.18) -> None:
+            status.caption(msg)
+            progress.progress(int(pct))
+            time.sleep(pause_s)
+
         with st.spinner("Generating your final review..."):
+            _step(10, "Loading your saved soil moisture readings…")
             recent = database.get_recent_soil_moisture_readings(
                 st.session_state.email, crop=crop, limit=8
             )
@@ -561,6 +609,7 @@ def show_dashboard():
                 for r in recent
             ]
 
+            _step(35, "Preparing weather snapshot (if available)…")
             last_weather = st.session_state.get("last_weather")
             weather_snap = None
             if isinstance(last_weather, dict):
@@ -589,6 +638,7 @@ def show_dashboard():
                     asof=str(last_weather.get("asof") or ""),
                 )
 
+            _step(55, "Summarizing questions you asked…")
             assistant_questions = []
             for role, msg in st.session_state.get("assistant_history", []):
                 if role == "user":
@@ -603,6 +653,7 @@ def show_dashboard():
                 all_questions.append(qtxt)
                 seen.add(qtxt)
 
+            _step(70, "Calculating harvest timeline and growth stage…")
             latest_moisture = st.session_state.get("last_moisture_val")
             if latest_moisture is None:
                 latest_row = database.get_latest_soil_moisture_reading(
@@ -617,6 +668,7 @@ def show_dashboard():
             except Exception:
                 harvest_date_for_report = None
 
+            _step(90, "Building final report (hazards, prevention, future threats)…")
             st.session_state.final_review_html = reporting.build_final_review_html(
                 email=st.session_state.email,
                 crop=crop,
@@ -630,7 +682,12 @@ def show_dashboard():
                 assistant_questions=all_questions,
                 weather=weather_snap,
             )
+            _step(100, "Done — rendering the report…", pause_s=0.10)
             st.session_state.final_review_just_generated = True
+
+        loader_box.empty()
+        status.empty()
+        progress.empty()
 
     if st.session_state.get("final_review_just_generated"):
         if hasattr(st, "toast"):
