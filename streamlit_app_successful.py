@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 # database helpers initialize on import
 import database
 import weather
+import reporting
 
 database.init_db()
 
@@ -18,6 +19,29 @@ st.markdown(
     .stApp { color: #034d23; }
     h1, h2, h3, h4, h5, h6 { color: #034d23; }
     .stButton>button { background-color: #2e7d32; color: white; }
+
+    /* Final review reveal animation */
+    @keyframes finalReveal {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0px); }
+    }
+    .final-report.reveal { animation: finalReveal 650ms ease-out; }
+    .final-header { display:flex; gap:12px; align-items:flex-start; justify-content:space-between; margin-bottom:10px; }
+    .final-title { font-size: 1.15rem; font-weight: 700; }
+    .muted { color: rgba(3,77,35,0.72); font-size: 0.92rem; }
+    .grid2 { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .card { background: rgba(255,255,255,0.78); border: 1px solid rgba(3,77,35,0.15); border-radius: 12px; padding: 12px; }
+    .card-title { font-weight: 700; margin-bottom: 8px; }
+    .k { font-size: 0.86rem; color: rgba(3,77,35,0.72); }
+    .v { font-size: 0.98rem; }
+    .sp { height: 8px; }
+    .badge { border-radius: 999px; padding: 6px 10px; font-weight: 700; border: 1px solid rgba(3,77,35,0.15); background: rgba(255,255,255,0.65); }
+    .badge-good { background: rgba(46,125,50,0.12); }
+    .badge-warn { background: rgba(255,193,7,0.18); }
+    .badge-bad  { background: rgba(244,67,54,0.14); }
+    .tbl { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    .tbl th, .tbl td { border-bottom: 1px solid rgba(3,77,35,0.10); padding: 6px 4px; vertical-align: top; }
+    @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
     </style>
     """,
     unsafe_allow_html=True,
@@ -369,6 +393,7 @@ def show_dashboard():
     if use_manual_coords:
         try:
             w = _fetch_weather(float(manual_lat), float(manual_lon))
+            st.session_state["last_weather"] = w
             temp_c = w.get("temperature_c")
             st.metric(label="Temperature", value=f"{temp_c} °C" if temp_c is not None else "N/A")
             st.write(f"**Condition:** {w.get('condition', 'Unknown')}  ")
@@ -411,6 +436,7 @@ def show_dashboard():
             loc = loc_results[pick]
             try:
                 w = _fetch_weather(float(loc["latitude"]), float(loc["longitude"]))
+                st.session_state["last_weather"] = w
                 temp_c = w.get("temperature_c")
                 st.metric(label="Temperature", value=f"{temp_c} °C" if temp_c is not None else "N/A")
                 st.write(f"**Condition:** {w.get('condition', 'Unknown')}  ")
@@ -490,6 +516,9 @@ def show_dashboard():
             st.caption(f"Source: {moisture_source}")
         if moisture_ts:
             st.caption(f"Saved/As of: {moisture_ts}")
+        st.session_state["last_moisture_val"] = float(moisture_val)
+        st.session_state["last_moisture_ts"] = moisture_ts
+        st.session_state["last_moisture_source"] = moisture_source
 
         if moisture_val < 30:
             st.warning("Soil is dry — consider irrigation or mulching.")
@@ -501,6 +530,93 @@ def show_dashboard():
     # --- Quick Tips ---
     st.subheader("Quick Farming Tips 🚜")
     st.markdown("- Rotate crops to maintain soil health.\n- Use organic compost where possible.\n- Monitor weather forecasts and irrigate accordingly.")
+
+    # --- Final Review / Report ---
+    st.subheader("Final Review ✅")
+    st.caption(
+        "Generate a detailed review for the selected crop using your saved data (soil moisture readings, questions asked, timeline, and hazards)."
+    )
+
+    if "final_review_html" not in st.session_state:
+        st.session_state.final_review_html = None
+
+    if st.button("Generate detailed review", type="primary"):
+        with st.spinner("Generating your final review..."):
+            recent = database.get_recent_soil_moisture_readings(
+                st.session_state.email, crop=crop, limit=8
+            )
+            moisture_recent = [
+                reporting.MoistureReading(
+                    moisture_pct=float(r["moisture_pct"]),
+                    created_at=str(r.get("created_at") or ""),
+                    source=str(r.get("source") or ""),
+                )
+                for r in recent
+            ]
+
+            last_weather = st.session_state.get("last_weather")
+            weather_snap = None
+            if isinstance(last_weather, dict):
+                weather_snap = reporting.WeatherSnapshot(
+                    temperature_c=(
+                        float(last_weather["temperature_c"])
+                        if last_weather.get("temperature_c") is not None
+                        else None
+                    ),
+                    humidity_pct=(
+                        float(last_weather["humidity_pct"])
+                        if last_weather.get("humidity_pct") is not None
+                        else None
+                    ),
+                    wind_kph=(
+                        float(last_weather["wind_kph"])
+                        if last_weather.get("wind_kph") is not None
+                        else None
+                    ),
+                    rain_probability_pct=(
+                        int(last_weather["rain_probability_pct"])
+                        if last_weather.get("rain_probability_pct") is not None
+                        else None
+                    ),
+                    condition=str(last_weather.get("condition") or ""),
+                    asof=str(last_weather.get("asof") or ""),
+                )
+
+            assistant_questions = []
+            for role, msg in st.session_state.get("assistant_history", []):
+                if role == "user":
+                    assistant_questions.append(str(msg))
+
+            latest_moisture = st.session_state.get("last_moisture_val")
+            if latest_moisture is None:
+                latest_row = database.get_latest_soil_moisture_reading(
+                    st.session_state.email, crop=crop
+                )
+                if latest_row:
+                    latest_moisture = float(latest_row["moisture_pct"])
+
+            harvest_date_for_report = None
+            try:
+                harvest_date_for_report = harvest_date.date()
+            except Exception:
+                harvest_date_for_report = None
+
+            st.session_state.final_review_html = reporting.build_final_review_html(
+                email=st.session_state.email,
+                crop=crop,
+                crop_info=info,
+                location_query=st.session_state.get("location_query"),
+                planting_date=planting_date if "planting_date" in locals() else None,
+                harvest_date=harvest_date_for_report,
+                harvest_days=int(harvest_days) if harvest_days else None,
+                moisture_recent=moisture_recent,
+                latest_moisture=float(latest_moisture) if latest_moisture is not None else None,
+                assistant_questions=assistant_questions,
+                weather=weather_snap,
+            )
+
+    if st.session_state.final_review_html:
+        st.markdown(st.session_state.final_review_html, unsafe_allow_html=True)
 
 # --- App flow ---
 if not st.session_state.logged_in:
