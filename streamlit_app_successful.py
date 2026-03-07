@@ -16,6 +16,7 @@ st.markdown(
     <style>
     .reportview-container { background: linear-gradient(#f7fff7, #eaf8eb); }
     .stApp { color: #034d23; }
+    h1, h2, h3, h4, h5, h6 { color: #034d23; }
     .stButton>button { background-color: #2e7d32; color: white; }
     </style>
     """,
@@ -448,6 +449,11 @@ def show_dashboard():
     elif source.startswith("Sensor"):
         default_url = os.environ.get("SOIL_MOISTURE_URL", "http://localhost:5000/moisture")
         sensor_url = st.text_input("Sensor endpoint URL", default_url)
+        st.caption(
+            "Expected JSON examples: "
+            "`{\"moisture_pct\": 42}` or `{\"moisture\": 0.42}` (fraction), "
+            "or Arduino ADC style `{\"adc\": 650, \"wet_raw\": 300, \"dry_raw\": 800}`."
+        )
         if st.button("Fetch sensor reading"):
             try:
                 moisture_val = float(weather.fetch_sensor_moisture(sensor_url))

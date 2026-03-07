@@ -7,7 +7,7 @@ import urllib.error
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Mapping
 
 
 @dataclass(frozen=True)
@@ -231,21 +231,100 @@ def get_current_weather(latitude: float, longitude: float) -> dict[str, Any]:
     }
 
 
-def fetch_sensor_moisture(url: str) -> float:
-    """Fetch soil moisture from a simple HTTP JSON endpoint.
+def parse_sensor_moisture_payload(payload: Mapping[str, Any]) -> float:
+    """Parse soil moisture from a JSON payload (returns 0-100 percent).
 
-    Accepts JSON keys: moisture, soil_moisture, value. Returns a percentage 0-100.
-    If the value appears to be 0-1, it is treated as a fraction and converted to percent.
+    Supported payload styles:
+
+    1) Percentage (recommended):
+       - {"moisture_pct": 42}
+       - {"moisture": 0.42}  # treated as fraction 0-1 -> percent
+       - {"soil_moisture": "42%"}  # '%' is ignored
+
+    2) Arduino / ADC raw reading (0-1023) with optional calibration:
+       - {"adc": 650, "wet_raw": 300, "dry_raw": 800}
+       - {"raw": 650}  # uses defaults wet_raw=300, dry_raw=800
+
+    Raw mapping is defined so that `wet_raw` => 100% and `dry_raw` => 0%.
     """
-    payload = _http_get_json(url, timeout_s=5.0)
+    # Prefer explicit percent keys first.
+    for key in ("moisture_pct", "moisture_percent", "soil_moisture_pct"):
+        if key in payload:
+            val = payload[key]
+            break
+    else:
+        val = None
+
+    if val is not None:
+        if isinstance(val, str):
+            val = val.strip().rstrip("%").strip()
+        moisture = float(val)
+        if 0.0 <= moisture <= 1.0:
+            moisture *= 100.0
+        return max(0.0, min(100.0, moisture))
+
+    calibration_present = any(
+        k in payload
+        for k in (
+            "wet_raw",
+            "dry_raw",
+            "min_raw",
+            "max_raw",
+            "wet",
+            "dry",
+        )
+    )
+
+    # Raw/ADC-style keys (Arduino analogRead is typically 0-1023).
+    raw_val: Any | None = None
+    for key in ("adc", "raw", "analog", "analog_reading"):
+        if key in payload:
+            raw_val = payload[key]
+            break
+
+    # Back-compat: if a legacy key is used *with* calibration, treat it as raw.
+    if raw_val is None and calibration_present:
+        for key in ("moisture", "soil_moisture", "value"):
+            if key in payload:
+                raw_val = payload[key]
+                break
+
+    if raw_val is not None:
+        raw = float(raw_val)
+        wet_raw = payload.get("wet_raw", payload.get("min_raw", 300.0))
+        dry_raw = payload.get("dry_raw", payload.get("max_raw", 800.0))
+        # Alternate naming support
+        if "wet" in payload and "wet_raw" not in payload:
+            wet_raw = payload["wet"]
+        if "dry" in payload and "dry_raw" not in payload:
+            dry_raw = payload["dry"]
+        wet_raw_f = float(wet_raw)
+        dry_raw_f = float(dry_raw)
+        if wet_raw_f == dry_raw_f:
+            raise ValueError("Invalid calibration: wet_raw equals dry_raw")
+        moisture_pct = (raw - dry_raw_f) / (wet_raw_f - dry_raw_f) * 100.0
+        return max(0.0, min(100.0, moisture_pct))
+
+    # Legacy percent-ish keys (no calibration): treat as percent/fraction as before.
     for key in ("moisture", "soil_moisture", "value"):
         if key in payload:
             val = payload[key]
             break
     else:
-        raise ValueError("JSON does not contain moisture/soil_moisture/value")
+        raise ValueError(
+            "JSON does not contain a supported moisture key "
+            "(try moisture_pct/moisture_percent, or adc/raw)."
+        )
 
+    if isinstance(val, str):
+        val = val.strip().rstrip("%").strip()
     moisture = float(val)
     if 0.0 <= moisture <= 1.0:
         moisture *= 100.0
     return max(0.0, min(100.0, moisture))
+
+
+def fetch_sensor_moisture(url: str) -> float:
+    """Fetch soil moisture from a simple HTTP JSON endpoint."""
+    payload = _http_get_json(url, timeout_s=5.0)
+    return parse_sensor_moisture_payload(payload)
