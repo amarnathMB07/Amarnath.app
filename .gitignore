@@ -28,3 +28,22 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Test artifacts
+.pytest_cache/
+
+# Local data
+*.db
+
+# Large binaries
+*.mp4
+
+# Windows
+[Dd]esktop.ini
+
+# Editor
+*.code-workspace
