@@ -34,8 +34,8 @@ export default function Projects() {
       description: "This very website! A highly interactive, dark-themed developer portfolio built with Next.js, Tailwind CSS, and Framer Motion.",
       image: "https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=800&auto=format&fit=crop",
       tags: ["Next.js", "Tailwind CSS", "Framer Motion"],
-      github: "https://github.com",
-      demo: "https://example.com"
+      github: "https://github.com/amarnathMB07/Amarnath.app",
+      demo: "https://amarnath-app.vercel.app"
     }
   ];
 

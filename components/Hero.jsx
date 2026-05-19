@@ -34,8 +34,8 @@ export default function Hero() {
             <Link href="#projects" className="px-8 py-4 bg-primary text-white rounded-full font-medium flex items-center gap-2 hover:bg-blue-600 transition-all shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.6)] transform hover:-translate-y-1">
               View Projects <ArrowRight size={18} />
             </Link>
-            <Link href="/resume.pdf" target="_blank" className="px-8 py-4 bg-slate-800 text-white dark:bg-white dark:text-slate-900 rounded-full font-medium flex items-center gap-2 hover:bg-slate-700 dark:hover:bg-slate-100 transition-all shadow-lg transform hover:-translate-y-1">
-              Download Resume <Download size={18} />
+            <Link href="https://drive.google.com/file/d/1uHUXpfRmEENIOKIxm6jyIORawRDZ24Gz/view?usp=drivesdk" target="_blank" className="px-8 py-4 bg-slate-800 text-white dark:bg-white dark:text-slate-900 rounded-full font-medium flex items-center gap-2 hover:bg-slate-700 dark:hover:bg-slate-100 transition-all shadow-lg transform hover:-translate-y-1">
+              View Resume <Download size={18} />
             </Link>
             <Link href="#contact" className="p-4 rounded-full border border-slate-300 dark:border-slate-700 hover:border-primary dark:hover:border-primary hover:text-primary dark:hover:text-primary transition-all bg-transparent backdrop-blur-sm">
               <Mail size={20} />

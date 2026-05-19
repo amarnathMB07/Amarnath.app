@@ -14,10 +14,10 @@ export default function Footer() {
         <h2 className="text-2xl font-bold mb-6 text-gradient">Amarnath MB</h2>
         
         <div className="flex items-center space-x-6 mb-8">
-          <Link href="https://github.com" target="_blank" className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all duration-300 transform hover:-translate-y-1">
+          <Link href="https://github.com/amarnathMB07" target="_blank" className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all duration-300 transform hover:-translate-y-1">
             <Github size={20} />
           </Link>
-          <Link href="https://linkedin.com" target="_blank" className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all duration-300 transform hover:-translate-y-1">
+          <Link href="https://www.linkedin.com/in/amarnath-mb-754b6340b" target="_blank" className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all duration-300 transform hover:-translate-y-1">
             <Linkedin size={20} />
           </Link>
           <Link href="mailto:a36933811@gmail.com" className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all duration-300 transform hover:-translate-y-1">
