@@ -68,7 +68,7 @@ export default function Contact() {
               </div>
               <div>
                 <h4 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1">Email</h4>
-                <p className="text-slate-600 dark:text-slate-400">amarnath@example.com</p>
+                <p className="text-slate-600 dark:text-slate-400">a36933811@gmail.com</p>
               </div>
             </div>
             
@@ -78,7 +78,7 @@ export default function Contact() {
               </div>
               <div>
                 <h4 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1">Location</h4>
-                <p className="text-slate-600 dark:text-slate-400">Your City, India</p>
+                <p className="text-slate-600 dark:text-slate-400">Kollam, Kerala, India</p>
               </div>
             </div>
 
@@ -88,7 +88,7 @@ export default function Contact() {
               </div>
               <div>
                 <h4 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-1">Phone</h4>
-                <p className="text-slate-600 dark:text-slate-400">+91 98765 43210</p>
+                <p className="text-slate-600 dark:text-slate-400">+91 97785 52209</p>
               </div>
             </div>
           </motion.div>

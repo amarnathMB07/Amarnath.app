@@ -4,10 +4,12 @@ import { Award, Calendar } from "lucide-react";
 
 export default function Certifications() {
   const certs = [
+    { title: "Cloud Computing (Elite Grade)", organization: "NPTEL", date: "Recent" },
+    { title: "Paper Presentation", organization: "SRM College", date: "Recent" },
+    { title: "Technical Workshop", organization: "VIT College", date: "Recent" },
     { title: "Data Analytics Certification", organization: "Google / Coursera", date: "2023" },
     { title: "Python for Data Science", organization: "IBM", date: "2023" },
     { title: "Power BI Workshop", organization: "Microsoft", date: "2022" },
-    { title: "SQL for Data Science", organization: "Udacity", date: "2022" },
     { title: "Web Development Bootcamp", organization: "Udemy", date: "2021" },
   ];
 

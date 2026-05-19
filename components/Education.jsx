@@ -5,17 +5,24 @@ import { GraduationCap, Calendar } from "lucide-react";
 export default function Education() {
   const education = [
     {
-      degree: "Bachelor of Technology in Computer Science",
-      institution: "Your College Name",
-      duration: "2021 - Present (Final Year)",
-      description: "Focusing on Full Stack Development, Data Structures, Algorithms, and Data Analytics. Maintaining a strong academic record while actively participating in tech clubs and hackathons.",
+      degree: "B.Tech in Artificial Intelligence and Data Science",
+      institution: "Dhanalakshmi Srinivasan Engineering College (Perambalur)",
+      duration: "2023 - 2027 (Final Year)",
+      description: "Focusing on Full Stack Development, Data Structures, Algorithms, and Data Analytics. Maintaining a strong academic record.",
       courses: ["Data Structures", "DBMS", "Web Development", "Artificial Intelligence"]
     },
     {
-      degree: "Higher Secondary Education",
-      institution: "Your School Name",
-      duration: "2019 - 2021",
-      description: "Completed with distinction. Major subjects: Physics, Chemistry, Mathematics, and Computer Science.",
+      degree: "Higher Secondary Education (12th Standard)",
+      institution: "Light Land HSS",
+      duration: "2020 - 2022",
+      description: "Completed with 75.08% marks. Major subjects: Physics, Chemistry, Mathematics, and Computer Science.",
+      courses: []
+    },
+    {
+      degree: "Secondary School Education (10th Standard)",
+      institution: "Model HSS",
+      duration: "Completed",
+      description: "Completed with 96% marks.",
       courses: []
     }
   ];

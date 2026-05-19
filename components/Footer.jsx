@@ -20,7 +20,7 @@ export default function Footer() {
           <Link href="https://linkedin.com" target="_blank" className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all duration-300 transform hover:-translate-y-1">
             <Linkedin size={20} />
           </Link>
-          <Link href="mailto:amarnath@example.com" className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all duration-300 transform hover:-translate-y-1">
+          <Link href="mailto:a36933811@gmail.com" className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all duration-300 transform hover:-translate-y-1">
             <Mail size={20} />
           </Link>
           <Link href="https://instagram.com" target="_blank" className="p-3 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-primary hover:text-white dark:hover:bg-primary transition-all duration-300 transform hover:-translate-y-1">
